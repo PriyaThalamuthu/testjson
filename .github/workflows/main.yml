@@ -24,4 +24,4 @@ jobs:
             Commit message: ${{ github.event.head_commit.message }}
             Commit author: ${{ github.event.head_commit.author.name }}
             Commit URL: ${{ github.event.head_commit.url }}
-          to: recipient@example.com
+          to: vengadesh@vthink.co.in
