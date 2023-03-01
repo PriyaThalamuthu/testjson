@@ -1,50 +1,27 @@
-name: Push JSON Files to S3
+name: Send Email on JSON Update
+
 on:
   push:
-    branches: [ "main" ]
+    paths:
+      - '**.json'
 
 jobs:
-  Push-JSON-Files-to-S3:
-    runs-on: "ubuntu-latest"
-    if: ${{ (contains(github.event.head_commit.message, '[') && contains(github.event.head_commit.message, ']')) }}
+  send_email:
+    runs-on: ubuntu-latest
     steps:
-      - name: "Checkout Code"
-        uses: actions/checkout@v3
-
-      - name: "Slice Commit message"
-        id: get_file_name
-        env:
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
-        run: |
-          echo ::set-output name=filename::$(echo $COMMIT_MSG | cut -d'[' -f2 | cut -d']' -f1)
-
-      - name: "Check file existence"
-        if: "!contains(github.event.head_commit.message, '[all]')"
-        id: check_files
-        uses: andstor/file-existence-action@v2
+      - uses: actions/checkout@v2
+      - uses: mxschmitt/action-tmate@v2
+      - name: send-email
+        uses: dawidd6/action-send-mail@v3
         with:
-          files: "InstrumentTest/${{ steps.get_file_name.outputs.filename }}"
-
-      - name: "File existence"
-        if: ${{ (steps.check_files.outputs.files_exists == 'true' && !contains(github.event.head_commit.message, '[all]') )}}
-        uses: prewk/s3-cp-action@v2
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          source: "InstrumentTest//${{ steps.get_file_name.outputs.filename }}"
-          dest: "s3://ecsitebuck/InstrumentTest/${{ steps.get_file_name.outputs.filename }}"
-
-      - name: "File existence"
-        if: ${{ (steps.check_files.outputs.files_exists == 'false' && !contains(github.event.head_commit.message, '[all]') )}}
-        run: |
-          echo "file not Exists"
-
-      - name: "Copy All files"
-        if: "contains(github.event.head_commit.message, '[all]')"
-        uses: prewk/s3-cp-action@v2
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          source: "InstrumentTest"
-          dest: "s3://ecsitebuck/InstrumentTest"
-          flags: --recursive
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_PASSWORD }}
+          subject: JSON file updated in the repository
+          body: |
+            The following commit has updated a JSON file in the repository:
+            Commit message: ${{ github.event.head_commit.message }}
+            Commit author: ${{ github.event.head_commit.author.name }}
+            Commit URL: ${{ github.event.head_commit.url }}
+          to: recipient@example.com
